@@ -2,5 +2,5 @@
 from importlib.metadata import version
 __version__ = version("wrkflw")
 
-from .wrkflw import *
+from .wrkflw import Workflow
 from .tasks import SleepTask, PythonTask, ShellTask
