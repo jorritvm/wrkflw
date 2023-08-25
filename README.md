@@ -3,14 +3,23 @@
 Simplistic python workflow manager
 
 ## Installation
-
-```bash
-$ pip install wrkflw
-```
+* clone the repo
+* `poetry install` (will take care of creating the virtual environment and populating it with all required packages)
 
 ## Usage
+* see `tests\example_*.py` files for example useage.
 
-- TODO
+## Features
+* Can handle python & shell tasks.
+* Enforces DAG structure
+* Can run a workflow in correct order
+* Runs workflow as far as possible when there are failing tasks before halting
+* Can reset a job
+* Can rerun only the waiting jobs
+* Can print a job log and visualise the workflow in matplotlib
+
+## Screenshot
+[<img src="docs/screenshots/viz.png" width="300"/>](docs/screenshots/viz.png)
 
 ## Contributing
 
