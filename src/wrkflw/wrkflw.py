@@ -130,15 +130,20 @@ class Workflow:
         G = nx.DiGraph()
 
         # Add nodes and edges from the adjacency list
-        for i, source in enumerate(self.topological_sort()):
-            G.add_node(source.name, status=source.status, layer=i)
+        for source in self.graph.keys():
+            G.add_node(source.name, status=source.status)
             for target in self.graph[source]:
                 G.add_edge(source.name, target.name)
 
         # Create a layout for our nodes specific to a DAG
+        # layout = nx.spring_layout(G, seed=42)
         # Compute the multipartite_layout using the "layer" node attribute --> issue: https://stackoverflow.com/questions/75855498/graph-edge-overlay-when-visualizing-a-networkx-dag-using-multipartite-layout
-        # layout = nx.multipartite_layout(G, subset_key="layer")
-        layout = nx.spring_layout(G, seed=42)
+        for layer, nodes in enumerate(nx.topological_generations(G)):
+            # `multipartite_layout` expects the layer as a node attribute, so add the
+            # numeric layer value as a node attribute
+            for node in nodes:
+                G.nodes[node]["layer"] = layer
+        layout = nx.multipartite_layout(G, subset_key="layer")
 
         # Extract unique statuses
         unique_statuses = set()
