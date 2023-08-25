@@ -84,3 +84,20 @@ class Workflow:
 
         # Show the plot
         plt.show()
+
+    def run(self):
+        failed_tasks = []
+
+        for task in nx.topological_sort(self.graph):
+            if task.status == Status.WAITING:
+                # first check if this task does not have failed predecessors
+                is_reachable = False
+                for failed_task in failed_tasks:
+                    is_reachable = is_reachable or nx.has_path(self.graph.reverse(), task, failed_task)
+                if not is_reachable:
+                    self.status_viz() # debug
+                    task.run()
+                    self.status_viz()  # debug
+            if task.status == Status.FAILED:
+                failed_tasks.append(task)
+
