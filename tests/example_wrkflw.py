@@ -16,3 +16,6 @@ if __name__ == "__main__":
 
     ts = w.topological_sort()
     print([obj.get_name() for obj in ts])
+
+    status_table = w.status_table()
+    print(status_table)

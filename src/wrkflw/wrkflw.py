@@ -3,12 +3,13 @@
 based on https://medium.com/hurb-engineering/building-a-task-orchestrator-with-python-and-graph-algorithms-a-fun-and-practical-guide-c1cd4c9f3d40
 """
 
+import pandas as pd
 from collections import defaultdict, deque
 from typing import List
 
 
 class Workflow:
-    """A directed graph data structure using adjacency lists.
+    """A workflow uses a directed graph data structure using adjacency lists.
 
     Attributes:
         graph: (dict) A dictionary that maps each node to a list of its adjacent nodes.
@@ -108,3 +109,13 @@ class Workflow:
             raise ValueError("Graph contains a cycle")
 
         return result
+
+    def status_table(self):
+        data = []
+        for obj in self.graph.keys():
+            name = obj.name
+            status = obj.status.value
+            data.append((name, status))
+
+        df = pd.DataFrame(data, columns=["Name", "Status"])
+        return df
