@@ -5,11 +5,15 @@ from enum import Enum
 
 
 class Status(Enum):
-    INIT = "init"
-    WAITING = "waiting"
-    RUNNING = "running"
-    FINISHED = "finished"
-    FAILED = "failed"
+    INIT = ("Init", "blue")
+    WAITING = ("Waiting", "orange")
+    RUNNING = ("Running", "yellow")
+    FINISHED = ("Finished", "green")
+    FAILED = ("Failed", "red")
+
+    def __init__(self, label, color):
+        self.label = label
+        self.color = color
 
 
 class Task:

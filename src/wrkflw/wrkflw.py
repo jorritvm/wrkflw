@@ -1,15 +1,11 @@
 """create workflows and workflow collections
-
-based on https://medium.com/hurb-engineering/building-a-task-orchestrator-with-python-and-graph-algorithms-a-fun-and-practical-guide-c1cd4c9f3d40
 """
 
-from collections import defaultdict, deque
-from typing import List
 import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
 
-from.tasks import Status
+from .tasks import Status, Task
 
 
 class Workflow:
@@ -21,156 +17,70 @@ class Workflow:
     """
 
     def __init__(self) -> None:
-        """
-        Initializes a new empty graph.
-        """
-        self.graph = defaultdict(list)
-        self.in_degree = defaultdict(int)
+        self.graph = nx.DiGraph()
 
-    def add_edge(self, u: int, v: int) -> None:
-        """Adds a directed edge from node u to node v.
+    def add_task(self, task: Task):
+        """Adds a new task to the graph
 
         Args:
-            u: (int) The starting node of the edge.
-            v: (int) The ending node of the edge.
+            task: (task) task to add
         """
-        if u in self.graph and v in self.graph[u]:
-            return  # Edge already exists
+        self.graph.add_node(task)
 
-        # Temporarily add the edge to detect cycles
-        self.graph[u].append(v)
-        cycle_exists = self.detect_cycle()
-        if cycle_exists:
+    def add_relation(self, task1: Task, task2: Task) -> None:
+        """Adds a directed edge from task1 to task2.
+        Will add task1 or task2 if they don't exist yet.
+
+        Args:
+            task1: (task) the predecessor task
+            task2: (task) the successor task
+        """
+        self.graph.add_edge(task1, task2)
+        still_a_dag = False
+        if nx.is_directed_acyclic_graph(self.graph):
+            still_a_dag = True
+        else:
             # If a cycle is created, remove the edge and return False
-            self.graph[u].remove(v)
-            return False
+            self.graph.remove_edge(task1, task2)
+        return still_a_dag
 
-        # If no cycle is created, add the edge and update in-degree
-        self.graph[u].append(v)
-        self.in_degree[v] += 1
-        return True
-
-    def detect_cycle(self) -> bool:
-        """Detects cycles in the graph using a depth-first search algorithm.
-
-        Returns:
-            (bool) True if a cycle exists, False otherwise.
-        """
-        visited = set()
-
-        def dfs(node, stack=None):
-            stack = set() if stack is None else stack
-
-            visited.add(node)
-            stack.add(node)
-
-            for neighbor in self.graph[node]:
-                if neighbor not in visited:
-                    if dfs(neighbor, stack):
-                        return True
-                elif neighbor in stack:
-                    return True
-
-            stack.remove(node)
-            return False
-
-        for node in list(self.graph):
-            if node not in visited:
-                if dfs(node):
-                    return True
-
-        return False
-
-    def topological_sort(self) -> List[int]:
-        """Performs a topological sort of the graph using Khan's algorithm.
-
-        Returns:
-            (List[int]) A list of nodes in topological order.
-        """
-        result = []
-        q = deque()
-        in_degree_copy = self.in_degree.copy()
-
-        # Add all nodes with in-degree 0 to the queue
-        for node in self.graph.keys():
-            if in_degree_copy[node] == 0:
-                q.append(node)
-
-        while q:
-            # Remove a node from the queue and add it to the result
-            node = q.popleft()
-            result.append(node)
-
-            # Decrement the in-degree of all adjacent nodes
-            for neighbor in self.graph[node]:
-                in_degree_copy[neighbor] -= 1
-
-                # Add the neighbor to the queue if its in-degree is 0
-                if in_degree_copy[neighbor] == 0:
-                    q.append(neighbor)
-
-        # Check if there was a cycle in the graph
-        if len(result) != len(self.graph):
-            raise ValueError("Graph contains a cycle")
-
-        return result
+        if task1 in self.graph and task2 in self.graph[task1]:
+            return  # Edge already exists
 
     def status_table(self):
         data = []
-        for obj in self.graph.keys():
+        for obj in self.graph.nodes():
             name = obj.name
-            status = obj.status.value
+            status = obj.status.label
             data.append((name, status))
 
         df = pd.DataFrame(data, columns=["Name", "Status"])
         return df
 
     def status_viz(self):
-        # Create a directed graph using NetworkX
-        G = nx.DiGraph()
-
-        # Add nodes and edges from the adjacency list
-        for source in self.graph.keys():
-            G.add_node(source.name, status=source.status)
-            for target in self.graph[source]:
-                G.add_edge(source.name, target.name)
-
         # Create a layout for our nodes specific to a DAG
-        # layout = nx.spring_layout(G, seed=42)
-        # Compute the multipartite_layout using the "layer" node attribute --> issue: https://stackoverflow.com/questions/75855498/graph-edge-overlay-when-visualizing-a-networkx-dag-using-multipartite-layout
-        for layer, nodes in enumerate(nx.topological_generations(G)):
+        # Compute the multipartite_layout using the "layer" node attribute
+        for layer, nodes in enumerate(nx.topological_generations(self.graph)):
             # `multipartite_layout` expects the layer as a node attribute, so add the
             # numeric layer value as a node attribute
             for node in nodes:
-                G.nodes[node]["layer"] = layer
-        layout = nx.multipartite_layout(G, subset_key="layer")
+                self.graph.nodes[node]["layer"] = layer
+        layout = nx.multipartite_layout(self.graph, subset_key="layer")
 
-        # Extract unique statuses
-        unique_statuses = set()
-        for node_data in G.nodes(data=True):
-            unique_statuses.add(node_data[1]['status'])
-
-        # Create a color map based on unique statuses
-        color_map = {
-            Status.INIT: 'blue',
-            Status.WAITING: 'orange',
-            Status.RUNNING: 'yellow',
-            Status.FINISHED: 'GREEN',
-            Status.FAILED: 'red'
-        }
-
-        # Generate node colors based on statuses
-        node_colors = [color_map[G.nodes[node]['status']] for node in G.nodes()]
+        # get labels and colors per node
+        node_colors = [task.status.color for task in self.graph.nodes()]
+        node_labels = {task: task.name for task in self.graph.nodes()}
 
         # Draw the graph
-        nx.draw(G, pos=layout, with_labels=True, node_size=1000, font_size=6, font_color='black', font_weight='normal', node_color=node_colors, node_shape="s")
-        nx.draw_networkx
+        nx.draw(self.graph, pos=layout,
+                with_labels=True, labels=node_labels,
+                node_size=1000, font_size=6, font_color='black', font_weight='normal',
+                node_color=node_colors, node_shape="s")
 
         # Create a legend
-        legend_labels = {status.value: color for status, color in color_map.items()}
-        legend = plt.legend(
-            handles=[plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color, label=status) for status, color
-                     in legend_labels.items()], title='Status Legend')
+        plt.legend(
+            handles=[plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=status.color, label=status.label) for
+                     status in Status], title='Status Legend')
 
         # Show the plot
         plt.show()

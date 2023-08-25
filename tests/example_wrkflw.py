@@ -8,14 +8,11 @@ if __name__ == "__main__":
     t5 = wf.SleepTask('task_5', 0.1)
 
     w = wf.Workflow()
-    w.add_edge(t1, t2)
-    w.add_edge(t1, t3)
-    w.add_edge(t2, t4)
-    w.add_edge(t3, t4)
-    w.add_edge(t4, t5)
-
-    ts = w.topological_sort()
-    print([obj.get_name() for obj in ts])
+    w.add_relation(t1, t2)
+    w.add_relation(t1, t3)
+    w.add_relation(t2, t4)
+    w.add_relation(t3, t4)
+    w.add_relation(t4, t5)
 
     t1.run()
     t2.run()
