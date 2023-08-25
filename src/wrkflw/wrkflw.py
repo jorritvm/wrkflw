@@ -3,9 +3,13 @@
 based on https://medium.com/hurb-engineering/building-a-task-orchestrator-with-python-and-graph-algorithms-a-fun-and-practical-guide-c1cd4c9f3d40
 """
 
-import pandas as pd
 from collections import defaultdict, deque
 from typing import List
+import pandas as pd
+import networkx as nx
+import matplotlib.pyplot as plt
+
+from.tasks import Status
 
 
 class Workflow:
@@ -85,10 +89,11 @@ class Workflow:
         """
         result = []
         q = deque()
+        in_degree_copy = self.in_degree.copy()
 
         # Add all nodes with in-degree 0 to the queue
         for node in self.graph.keys():
-            if self.in_degree[node] == 0:
+            if in_degree_copy[node] == 0:
                 q.append(node)
 
         while q:
@@ -98,10 +103,10 @@ class Workflow:
 
             # Decrement the in-degree of all adjacent nodes
             for neighbor in self.graph[node]:
-                self.in_degree[neighbor] -= 1
+                in_degree_copy[neighbor] -= 1
 
                 # Add the neighbor to the queue if its in-degree is 0
-                if self.in_degree[neighbor] == 0:
+                if in_degree_copy[neighbor] == 0:
                     q.append(neighbor)
 
         # Check if there was a cycle in the graph
@@ -119,3 +124,48 @@ class Workflow:
 
         df = pd.DataFrame(data, columns=["Name", "Status"])
         return df
+
+    def status_viz(self):
+        # Create a directed graph using NetworkX
+        G = nx.DiGraph()
+
+        # Add nodes and edges from the adjacency list
+        for i, source in enumerate(self.topological_sort()):
+            G.add_node(source.name, status=source.status, layer=i)
+            for target in self.graph[source]:
+                G.add_edge(source.name, target.name)
+
+        # Create a layout for our nodes specific to a DAG
+        # Compute the multipartite_layout using the "layer" node attribute --> issue: https://stackoverflow.com/questions/75855498/graph-edge-overlay-when-visualizing-a-networkx-dag-using-multipartite-layout
+        # layout = nx.multipartite_layout(G, subset_key="layer")
+        layout = nx.spring_layout(G, seed=42)
+
+        # Extract unique statuses
+        unique_statuses = set()
+        for node_data in G.nodes(data=True):
+            unique_statuses.add(node_data[1]['status'])
+
+        # Create a color map based on unique statuses
+        color_map = {
+            Status.INIT: 'blue',
+            Status.WAITING: 'orange',
+            Status.RUNNING: 'yellow',
+            Status.FINISHED: 'GREEN',
+            Status.FAILED: 'red'
+        }
+
+        # Generate node colors based on statuses
+        node_colors = [color_map[G.nodes[node]['status']] for node in G.nodes()]
+
+        # Draw the graph
+        nx.draw(G, pos=layout, with_labels=True, node_size=1000, font_size=6, font_color='black', font_weight='normal', node_color=node_colors, node_shape="s")
+        nx.draw_networkx
+
+        # Create a legend
+        legend_labels = {status.value: color for status, color in color_map.items()}
+        legend = plt.legend(
+            handles=[plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color, label=status) for status, color
+                     in legend_labels.items()], title='Status Legend')
+
+        # Show the plot
+        plt.show()
