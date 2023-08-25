@@ -1,12 +1,14 @@
+import time
+
 import wrkflw as wf
 
 if __name__ == "__main__":
-    t1 = wf.SleepTask('task_1', 1)
-    t2 = wf.SleepTask('task_2', 1)
-    t3 = wf.SleepTask('task_3', 2)
-    t4 = wf.SleepTask('task_4', 1)
+    t1 = wf.SleepTask('task_1', 0.1)
+    t2 = wf.SleepTask('task_2', 0.1)
+    t3 = wf.SleepTask('task_3', 0.2)
+    t4 = wf.SleepTask('task_4', 0.1)
     t5 = wf.SleepTask('task_5', 1)
-    t6 = wf.PythonTask("pythontask_that_fails")
+    t6 = wf.PythonTask("failing_task")
     def thunk():
         raise ValueError("This stub fails.")
     t6.set_task(thunk)
@@ -24,10 +26,13 @@ if __name__ == "__main__":
     w.add_relation(t6, t8)
     w.add_relation(t7, t8)
 
-    # t1.run()
-    # t2.run()
-    # status_table = w.status_table()
-    # print(status_table)
-    # w.status_viz()
+    t1.run()
+    t2.run()
+    status_table = w.status_table()
+    print(status_table)
+    w.status_viz()
+
+    w.reset_task("task_2")
 
     w.run()
+

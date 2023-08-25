@@ -98,6 +98,13 @@ class Workflow:
                     self.status_viz() # debug
                     task.run()
                     self.status_viz()  # debug
+                else:
+                    print(f"Can't run task {task.name} due to failed prior tasks")
             if task.status == Status.FAILED:
                 failed_tasks.append(task)
+
+    def reset_task(self, name):
+        for task in self.graph.nodes():
+            if task.name == name:
+                task.status = Status.WAITING
 
