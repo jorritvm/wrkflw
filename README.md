@@ -10,7 +10,7 @@ Simplistic python workflow manager
 * see `tests\example_*.py` files for example useage.
 
 ## Features
-* Can handle python & shell tasks.
+* Can handle python jobs, shell tasks and R scripts.
 * Enforces DAG structure
 * Can run a workflow in correct order
 * Runs workflow as far as possible when there are failing tasks before halting
