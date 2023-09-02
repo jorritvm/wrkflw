@@ -12,8 +12,7 @@ class Workflow:
     """A workflow uses a directed graph data structure using adjacency lists.
 
     Attributes:
-        graph: (dict) A dictionary that maps each node to a list of its adjacent nodes.
-        in_degree: (dict) A dictionary that maps each node to its in-degree.
+        graph: (nx.DiGraph) A directional graph object from the networkx package
     """
 
     def __init__(self) -> None:
@@ -27,7 +26,7 @@ class Workflow:
         """
         self.graph.add_node(task)
 
-    def add_relation(self, task1: Task, task2: Task) -> None:
+    def add_relation(self, task1: Task, task2: Task) -> bool:
         """Adds a directed edge from task1 to task2.
         Will add task1 or task2 if they don't exist yet.
 
@@ -44,10 +43,7 @@ class Workflow:
             self.graph.remove_edge(task1, task2)
         return still_a_dag
 
-        if task1 in self.graph and task2 in self.graph[task1]:
-            return  # Edge already exists
-
-    def status_table(self):
+    def status_table(self) -> pd.DataFrame:
         data = []
         for obj in self.graph.nodes():
             name = obj.name
@@ -72,15 +68,34 @@ class Workflow:
         node_labels = {task: task.name for task in self.graph.nodes()}
 
         # Draw the graph
-        nx.draw(self.graph, pos=layout,
-                with_labels=True, labels=node_labels,
-                node_size=1000, font_size=6, font_color='black', font_weight='normal',
-                node_color=node_colors, node_shape="s")
+        nx.draw(
+            self.graph,
+            pos=layout,
+            with_labels=True,
+            labels=node_labels,
+            node_size=1000,
+            font_size=6,
+            font_color="black",
+            font_weight="normal",
+            node_color=node_colors,
+            node_shape="s",
+        )
 
         # Create a legend
         plt.legend(
-            handles=[plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=status.color, label=status.label) for
-                     status in Status], title='Status Legend')
+            handles=[
+                plt.Line2D(
+                    [0],
+                    [0],
+                    marker="o",
+                    color="w",
+                    markerfacecolor=status.color,
+                    label=status.label,
+                )
+                for status in Status
+            ],
+            title="Status Legend",
+        )
 
         # Show the plot
         plt.show()
@@ -93,9 +108,11 @@ class Workflow:
                 # first check if this task does not have failed predecessors
                 is_reachable = False
                 for failed_task in failed_tasks:
-                    is_reachable = is_reachable or nx.has_path(self.graph.reverse(), task, failed_task)
+                    is_reachable = is_reachable or nx.has_path(
+                        self.graph.reverse(), task, failed_task
+                    )
                 if not is_reachable:
-                    self.status_viz() # debug
+                    self.status_viz()  # debug
                     task.run()
                     self.status_viz()  # debug
                 else:
@@ -107,4 +124,3 @@ class Workflow:
         for task in self.graph.nodes():
             if task.name == name:
                 task.status = Status.WAITING
-
