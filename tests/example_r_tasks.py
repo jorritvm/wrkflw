@@ -25,3 +25,11 @@ if __name__ == "__main__":
     print("-----------t2 ran--------------------")
     print(w.status_table())
     w.status_viz()
+
+    print("---- showing output of T1---------")
+    print("---- T1: stdout---------")
+    print(t1.stdout)
+    print("---- T1: stderr---------")
+    print(t1.stderr)
+    print("------logs folder--------")
+    print(t1.batchfile)

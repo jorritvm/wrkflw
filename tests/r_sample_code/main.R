@@ -25,6 +25,8 @@ if (interactive) {
 }
 
 print(param)
+print("this will be print to the stdout - look for it in the logs")
+warning("this will be print to the stderr - look for it in the logs")
 
 if (param != "failure") {
   print("success") 

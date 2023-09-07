@@ -58,22 +58,28 @@ class SleepTask(Task):
 class ShellTask(Task):
     def __init__(self, name):
         super().__init__(name)
+        self.stderr = ""
+        self.stdout = ""
+        self.shell_path = ""
 
     def set_task(self, shell_path):
-        if os.path.splitext(shell_path)[1] == ".bat":
-            super().reset_status()
+        super().reset_status()
+        self.shell_path = shell_path
 
-            def thunk():
-                print(f"ShellTask {self.name}: starting")
-                output = subprocess.run(
-                    shell_path, shell=True, text=True, capture_output=True
-                )
-                last_line = output.stdout.strip().splitlines()[-1]
-                has_succeeded = "success" in last_line.lower()
-                print(f"ShellTask {self.name}: finishing")
-                return has_succeeded
+        def thunk():
+            print(f"ShellTask {self.name}: starting")
+            output = subprocess.run(
+                shell_path, shell=True, text=True, capture_output=True
+            )
+            self.stderr = output.stderr
+            self.stdout = output.stdout
 
-            self.task = thunk
+            last_line = output.stdout.strip().splitlines()[-1]
+            has_succeeded = "success" in last_line.lower()
+            print(f"ShellTask {self.name}: finishing")
+            return has_succeeded
+
+        self.task = thunk
 
 
 class PythonTask(Task):
@@ -123,10 +129,11 @@ class RTask(Task):
     def set_task(
         self,
         r_file: str,
-        parameters: str,
+        parameters: dict,
         rscript_executable: str,
         success_string: str = "success",
         tail_size: int = 5,
+        logs_path: str = "",
     ):
         if os.path.splitext(r_file)[1] == ".R":
             super().reset_status()
@@ -140,7 +147,7 @@ class RTask(Task):
 
             # write a wrapper batch file
             bat_file_path = self.write_batch_wrapper(
-                filename, folder, formatted_params, rscript_executable
+                filename, folder, formatted_params, rscript_executable, logs_path
             )
             self.batchfile = bat_file_path
 
@@ -150,8 +157,7 @@ class RTask(Task):
                 output = subprocess.run(
                     bat_file_path, shell=True, text=True, capture_output=True
                 )
-                self.stderr = output.stderr
-                self.stdout = output.stdout
+                self.write_output(output.stdout, output.stderr)
 
                 print("-------------- caputred job output-----------")
                 print(output)
@@ -165,10 +171,14 @@ class RTask(Task):
             self.task = thunk
 
     def write_batch_wrapper(
-        self, filename, folder, formatted_params, rscript_executable
+        self, filename, folder, formatted_params, rscript_executable, logs_path
     ):
+        if logs_path == "":
+            task_output_folder = tempfile.mkdtemp()
+        else:
+            task_output_folder = logs_path
+
         # write a wrapper batch file
-        temp_dir = tempfile.mkdtemp()
         bat_file_content = f"""
             set rscript="{rscript_executable}"
             set "original_dir=%cd%"
@@ -176,8 +186,22 @@ class RTask(Task):
             %rscript% {filename} {formatted_params}
             cd /d "%original_dir%"
             """
-        bat_file_path = os.path.join(temp_dir, "temp_script.bat")
+        bat_file_path = os.path.join(task_output_folder, "temp_script.bat")
         with open(bat_file_path, "w") as bat_file:
             bat_file.write(bat_file_content)
 
         return bat_file_path
+
+    def write_output(self, stdout, stderr):
+        self.stdout = stdout
+        self.stderr = stderr
+
+        output_folder = os.path.dirname(self.batchfile)
+
+        output_stdout = os.path.join(output_folder, "stdout.txt")
+        with open(output_stdout, "w") as file:
+            file.write(stdout)
+
+        output_stderr = os.path.join(output_folder, "stderr.txt")
+        with open(output_stderr, "w") as file:
+            file.write(stderr)
